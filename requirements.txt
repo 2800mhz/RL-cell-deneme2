@@ -1,6 +1,4 @@
-# No mandatory third-party dependencies for the base simulator.
-#
-# Optional RL stack:
-# gymnasium>=0.29
-# stable-baselines3>=2.3
-# torch>=2.2
+# Base runtime dependencies for the desktop simulator.
+# The project itself uses only the Python standard library for the core UI/simulation.
+# Install this file when you want the lightweight local workflow.
+

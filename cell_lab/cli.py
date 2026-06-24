@@ -45,8 +45,14 @@ def main() -> None:
     plot_parser.add_argument("--model-path")
 
     train_parser = subparsers.add_parser("train", help="Train an RL agent")
-    train_parser.add_argument("--algorithm", choices=["ppo", "sac"], default="ppo")
+    train_parser.add_argument("--algorithm", choices=["native", "ppo", "sac"], default="native")
     train_parser.add_argument("--timesteps", type=int, default=100_000)
+    train_parser.add_argument("--run-name")
+    train_parser.add_argument("--resume-from")
+    train_parser.add_argument("--eval-freq", type=int, default=10_000)
+    train_parser.add_argument("--checkpoint-freq", type=int, default=10_000)
+    train_parser.add_argument("--model-dir", default="models")
+    train_parser.add_argument("--log-dir", default="train_logs")
 
     args = parser.parse_args()
 
@@ -58,7 +64,16 @@ def main() -> None:
         path = run_and_plot(mode=args.mode, steps=args.steps, model_path=args.model_path)
         print(f"Plot saved to {path}")
     elif args.command == "train":
-        path = train_agent(algorithm=args.algorithm, total_timesteps=args.timesteps)
+        path = train_agent(
+            algorithm=args.algorithm,
+            total_timesteps=args.timesteps,
+            model_dir=args.model_dir,
+            log_dir=args.log_dir,
+            run_name=args.run_name,
+            resume_from=args.resume_from,
+            eval_freq=args.eval_freq,
+            checkpoint_freq=args.checkpoint_freq,
+        )
         print(f"Model saved to {path}")
     else:
         parser.print_help()

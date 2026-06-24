@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import math
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -64,11 +66,21 @@ def heuristic_action(simulator: CellSimulator) -> list[float]:
 class ModelPolicy:
     def __init__(self, model_path: str | Path) -> None:
         if PPO is None and SAC is None:
-            raise RuntimeError("stable-baselines3 is not installed. Install optional RL dependencies first.")
+            self._sb3_unavailable = True
+        else:
+            self._sb3_unavailable = False
 
         path = Path(model_path)
         if not path.exists():
             raise FileNotFoundError(path)
+
+        if path.suffix.lower() == ".json":
+            self.model_type = "native"
+            self.native_model = self._load_native_model(path)
+            return
+
+        if self._sb3_unavailable:
+            raise RuntimeError("stable-baselines3 is not installed, so ZIP RL models cannot be loaded in this Python environment.")
 
         last_error: Optional[Exception] = None
         for loader in (PPO, SAC):
@@ -76,11 +88,39 @@ class ModelPolicy:
                 continue
             try:
                 self.model = loader.load(path)
+                self.model_type = "sb3"
                 return
             except Exception as exc:  # pragma: no cover
                 last_error = exc
         raise RuntimeError(f"Could not load model from {path}") from last_error
 
     def predict(self, observation: Sequence[float]) -> list[float]:
+        if getattr(self, "model_type", None) == "native":
+            return self._predict_native(observation)
         action, _ = self.model.predict(observation, deterministic=True)
         return [float(value) for value in action]
+
+    def _load_native_model(self, path: Path) -> dict:
+        model = json.loads(path.read_text(encoding="utf-8"))
+        if model.get("type") != "native_linear_v1":
+            raise RuntimeError(f"Unsupported native model format in {path.name}")
+        return model
+
+    def _predict_native(self, observation: Sequence[float]) -> list[float]:
+        weights = self.native_model["weights"]
+        biases = self.native_model["biases"]
+        actions: list[float] = []
+        for neuron_weights, bias in zip(weights, biases):
+            total = bias
+            for weight, value in zip(neuron_weights, observation):
+                total += weight * float(value)
+            actions.append(self._sigmoid(total))
+        return actions
+
+    @staticmethod
+    def _sigmoid(value: float) -> float:
+        if value >= 0:
+            exp_value = math.exp(-value)
+            return 1.0 / (1.0 + exp_value)
+        exp_value = math.exp(value)
+        return exp_value / (1.0 + exp_value)

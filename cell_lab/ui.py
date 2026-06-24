@@ -30,6 +30,7 @@ class CellLabUI:
         self.badge_var = tk.StringVar()
         self.speed_var = tk.StringVar(value=f"{self.interval_ms} ms")
         self.last_action_var = tk.StringVar(value="No action yet")
+        self.model_status_var = tk.StringVar(value="No model loaded. Heuristic will be used.")
         self.slider_vars: Dict[str, tk.DoubleVar] = {
             name: tk.DoubleVar(value=0.5) for name in self.simulator.action_names
         }
@@ -247,6 +248,8 @@ class CellLabUI:
             style="App.TCombobox",
         )
         mode_box.pack(fill="x", pady=(0, 12))
+        mode_box.bind("<<ComboboxSelected>>", self._on_mode_changed)
+        ttk.Label(controls, textvariable=self.model_status_var, style="Muted.TLabel", wraplength=320).pack(anchor="w", pady=(0, 10))
 
         button_row = ttk.Frame(controls)
         button_row.pack(fill="x", pady=(0, 8))
@@ -345,16 +348,34 @@ class CellLabUI:
     def load_model(self) -> None:
         path = filedialog.askopenfilename(
             title="Select model",
-            filetypes=[("ZIP model", "*.zip"), ("All files", "*.*")],
+            filetypes=[("Supported models", "*.json *.zip"), ("JSON model", "*.json"), ("ZIP model", "*.zip"), ("All files", "*.*")],
         )
         if not path:
             return
         try:
             self.model_policy = ModelPolicy(Path(path))
             self.mode_var.set("model")
+            self.model_status_var.set(f"Model loaded: {Path(path).name}")
             messagebox.showinfo("Cell Lab", f"Model loaded:\n{path}")
         except Exception as exc:
+            self.model_policy = None
+            self.model_status_var.set("Model load failed. Heuristic will be used.")
             messagebox.showerror("Cell Lab", str(exc))
+
+    def _on_mode_changed(self, event: object | None = None) -> None:
+        if self.mode_var.get() == "model" and self.model_policy is None:
+            self.mode_var.set("heuristic")
+            self.model_status_var.set("Model mode requested, but no compatible model is loaded. Switched to heuristic.")
+            messagebox.showwarning(
+                "Cell Lab",
+                "No compatible model is loaded.\n\nThe app switched back to heuristic mode.",
+            )
+        elif self.mode_var.get() == "model":
+            self.model_status_var.set("Model mode active.")
+        elif self.mode_var.get() == "manual":
+            self.model_status_var.set("Manual mode active. Sliders control the cell.")
+        else:
+            self.model_status_var.set("Heuristic mode active. Built-in auto-controller is running.")
 
     def start(self) -> None:
         if self.running:
@@ -413,7 +434,10 @@ class CellLabUI:
         state = "Alive" if self.simulator.state.alive else "Dead"
         ready = "Ready" if self.simulator.ready_to_divide() else "Not ready"
         self.badge_var.set(f"{state} • Step {self.simulator.steps}/{self.simulator.max_steps}")
-        self.status_var.set(f"{state} cell. Division status: {ready}. Mode: {self.mode_var.get().title()}.")
+        active_mode = self.mode_var.get().title()
+        if self.mode_var.get() == "model" and self.model_policy is None:
+            active_mode = "Heuristic (model missing)"
+        self.status_var.set(f"{state} cell. Division status: {ready}. Mode: {active_mode}.")
         self.detail_var.set(self.simulator.summary())
         if (
             not self.running

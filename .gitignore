@@ -130,6 +130,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv312/
 env/
 venv/
 ENV/
@@ -179,3 +180,14 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# Project artifacts
+models/*
+!models/.gitkeep
+plots/*
+!plots/.gitkeep
+train_logs/*
+!train_logs/.gitkeep
+*.tfevents.*
+*.npz
+python
