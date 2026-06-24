@@ -1,19 +1,6 @@
-# requirements.txt - Gelişmiş Hücre Simülasyonu
-
-# Temel kütüphaneler
-numpy>=1.21.0
-matplotlib>=3.5.0
-
-# Gym ve RL
-gym>=0.21.0
-stable-baselines3>=1.6.0
-torch>=1.12.0
-
-# GUI
-PyQt5>=5.15.0
-
-# İsteğe bağlı: Tensorboard (eğitim takibi)
-tensorboard>=2.10.0
-
-# İsteğe bağlı: TQDM (progress bar)
-tqdm>=4.64.0
+# No mandatory third-party dependencies for the base simulator.
+#
+# Optional RL stack:
+# gymnasium>=0.29
+# stable-baselines3>=2.3
+# torch>=2.2
